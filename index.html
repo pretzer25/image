@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Sequence to Video</title>
+</head>
+<body>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <video id="video" width="640" height="480" controls></video>
+    <a id="downloadBtn" style="display:none;">Download Video</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var canvas = document.getElementById('canvas');
+            var ctx = canvas.getContext('2d');
+            var video = document.getElementById('video');
+            var downloadBtn = document.getElementById('downloadBtn');
+            var images = [];
+            var currentImageIndex = 0;
+
+            // Define the list of image files to load
+            var imageFiles = [
+                '1.png',
+                '2.png',
+                '3.png',
+                '4.png',
+                '5.png',
+                '6.png',
+                '7.png',
+                '8.png',
+                '9.png',
+                '10.png'
+            ];
+
+            function loadImages() {
+                var loadedImages = 0;
+
+                // Load each image into an array
+                imageFiles.forEach(function(file, index) {
+                    var image = new Image();
+                    image.onload = function() {
+                        loadedImages++;
+                        images[index] = image;
+
+                        // Check if all images are loaded
+                        if (loadedImages === imageFiles.length) {
+                            startVideoRecording();
+                        }
+                    };
+                    image.src = file;
+                });
+            }
+
+            function startVideoRecording() {
+                // Set the initial image on canvas
+                ctx.drawImage(images[currentImageIndex], 0, 0, canvas.width, canvas.height);
+
+                // Create a MediaStream from the canvas
+                var stream = canvas.captureStream(30); // 30 FPS
+
+                // Set the source of the video element to the MediaStream
+                video.srcObject = stream;
+                video.play();
+
+                // Use MediaRecorder to record the video
+                var mediaRecorder = new MediaRecorder(stream);
+                var chunks = [];
+
+                mediaRecorder.ondataavailable = function(event) {
+                    chunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = function() {
+                    var blob = new Blob(chunks, { type: 'video/webm' });
+                    var url = URL.createObjectURL(blob);
+
+                    // Set the href and download attributes for the download button
+                    downloadBtn.href = url;
+                    downloadBtn.download = 'video.webm';  // WebM format
+                    downloadBtn.textContent = 'Download Video';
+                    downloadBtn.style.display = 'block';
+                };
+
+                // Start recording the video
+                mediaRecorder.start();
+
+                // Move to the next image every 5 seconds until all images are processed
+                var interval = setInterval(function() {
+                    currentImageIndex++;
+                    if (currentImageIndex < images.length) {
+                        ctx.drawImage(images[currentImageIndex], 0, 0, canvas.width, canvas.height);
+                    } else {
+                        clearInterval(interval);
+                        mediaRecorder.stop();
+                    }
+                }, 5000);
+            }
+
+            // Start loading the images
+            loadImages();
+        });
+    </script>
+</body>
+</html>
